@@ -2,26 +2,16 @@
 # -*- coding: utf-8 -*-
 
 
-from scipy.stats import qmc
-# ver como fazer referencia ao kite
 
-from math import exp, cos
-from scipy.stats import truncexpon
-import time
+
+from scipy.stats import qmc
+from math import exp, cos, log
+from time import time
 import random
 #Escreva seu nome e numero USP
 INFO = {12556819:"Heloisa Tambara"}
-A = 0.3 # A = 0.rg
-B = 0.4  # B = 0.cpf
-
-# como definir g(x) na importance sampling e na control variate?
-
-class RandomEngine(qmc.QMCEngine):
-    def __init__(self, d, seed=None):
-        super().__init__(d=d, seed=seed)
-    def random(self, n=1):
-        self.num_generated += n
-        return self.rng.random((n, self.d))
+A = 0.397318431 # A = 0.rg
+B = 0.43292242835  # B = 0.cpf
 
 
 def f(x):
@@ -29,8 +19,8 @@ def f(x):
     Esta funcao deve receber x e devolver f(x), como especifcado no enunciado
     Escreva o seu codigo nas proximas linhas
     """
-    A = 0.3 # A = 0.rg
-    B = 0.4  # B = 0.cpf
+    A = 0.397318431 # A = 0.rg
+    B = 0.43292242835  # B = 0.cpf
     f = exp(-A*x) * cos(B*x)
     
     return f
@@ -46,19 +36,14 @@ def crude(Seed = None):
     usando o metodo crude
     Escreva o seu codigo nas proximas linhas
     """
-    t0 = time.time()
-    n = 1000000 #inserir n
+    global n #inserir n
     soma = 0
-    nums = RandomEngine(1).random(n)
-    for x in range(n): # gerar n numeros x, calcular suas f(x), somar tudo e dividir por n
-        soma += f(nums[x,0])
+    sampler = qmc.Sobol(d=1, scramble=True)
+    sample = sampler.random_base2(m=n)
+    for x in range(2**n): # gerar 2^n numeros x, calcular suas f(x), somar tudo e dividir por 2^n
+        soma += f(sample[x,0])
+    mu = soma/2**n
 
-    mu = soma/n
-
-    
-    t1 = time.time()
-    t = t1-t0
-    print(f'calculado em {t} segundos')
     return mu # Retorne sua estimativa
 
 
@@ -72,20 +57,15 @@ def hit_or_miss(Seed = None):
     usando o metodo hit or miss
     Escreva o seu codigo nas proximas linhas
     """
-    t0 = time.time()
-    n = 1000000 # inserir n
+    global n # inserir n
     soma = 0
-    x, y = RandomEngine(1).random(n), RandomEngine(1).random(n) # gera valor posicional
-    for i in range(n):
-        if y[i,0] <= f(x[i,0]):
+    sampler = qmc.Sobol(d=2, scramble=True)
+    sample = sampler.random_base2(m=n)
+    x, y = sample[:,0], sample[:,1] # gera valor posicional
+    for i in range(2**n):
+        if y[i] <= f(x[i]):
             soma += 1 # sucesso se estiver abaixo da linha da função
-    
-    mu = soma/n # calcula media 
-
-
-    t1 = time.time()
-    t = t1-t0
-    print(f'calculado em {t} segundos') # tempo que levou para estimar
+    mu = soma/2**n # calcula media 
 
     return mu # Retorne sua estimativa
 
@@ -106,24 +86,13 @@ def control_variate(Seed = None):
     usando o metodo control variate
     Escreva o seu codigo nas proximas linhas
     """
-
-    t0 = time.time()
-    n = 1000000 # inserir n
+    global n # inserir n
     soma = 0
-    x = RandomEngine(1).random(n) 
-    for i in range(n):
+    sampler = qmc.Sobol(d=1, scramble=True)
+    x = sampler.random_base2(m=n)
+    for i in range(2**n):
         soma += f(x[i,0]) - phi(x[i,0]) # diferenca em cada ponto sorteado
-
-
-
-    mu = soma/n + Phi(1) - Phi(0) # media das diferencas e integral de phi no intervalo
-
-
-    t1 = time.time()
-    t = t1-t0
-    print(f'calculado em {t} segundos') # tempo que levou para calcular
-
-
+    mu = soma/2**n + Phi(1) - Phi(0) # media das diferencas e integral de phi no intervalo
     return mu # Retorne sua estimativa
 
 
@@ -131,10 +100,14 @@ def control_variate(Seed = None):
 # Importance Sampling
 
 # funcao que descreve a curva da disribuicao
-def probexp(x, a=1, b=1):
-    randg = a*exp(-a*x)/(1-exp(-b))
-    return randg
+def fcp(x, a=1):
+    y = - exp(-a*x)/(1-exp(-a)) #- 0.3
+    zero = - exp(-a*0)/(1-exp(-a))
+    return y - zero
 
+def fdp(x, a=1):
+    y = a*exp(-a*x)/(1-exp(-a))
+    return y
 
 
 def importance_sampling(Seed = None):
@@ -144,40 +117,31 @@ def importance_sampling(Seed = None):
     usando o metodo importance sampling
     Escreva o seu codigo nas proximas linhas
     """
-    t0 = time.time()
-    n = 1000000 # a definir
-
+    global n # a definir
+    sampler = qmc.Sobol(d=1, scramble=True)
+    x = sampler.random_base2(m=n)
+    x1 = [fcp(i,0.5) for i in x]
+    x2 = [fdp(i, .5) for i in x1]
     soma = 0
-    for i in range(n):
-        xi = truncexpon.rvs(b = 0.5, scale = 2) # gera valores randomicos segundo a distribuicao escolhida aproximada
-        soma += f(xi)/probexp(xi,0.5, 0.5) # media ponderada
+    for i in range(2**n):
+        soma += f(x1[i])/x2[i] # media ponderada
 
-    mu = soma/n
-
-
-
-    t1 = time.time()
-    t = t1-t0
-    print(f'calculado em {t} segundos') # tempo que leva para calcular
+    mu = soma/2**n
 
     return mu #Retorne sua estimativa
 
 
 
 
-
 # definir convergências
 def convergeCrude():
-    global n
-    x = [crude() for i in range(100)]
-   # print(x[1:10])
+    x = [crude() for i in range(100)] # gera 100 estimadores
     x2 = [X**2 for X in x]
-    mean = (sum(x)/100)
-    var = sum(x2)/100 - mean**2
+    mean = (sum(x)/100) # calcula media dos estimadores
+    var = sum(x2)/100 - mean**2 # variancia dos estimadores
     return var, mean
 
 def convergeHoM():
-    global n
     x = [hit_or_miss() for i in range(100)]
    # print(x[1:10])
     x2 = [X**2 for X in x]
@@ -186,7 +150,6 @@ def convergeHoM():
     return var, mean
 
 def convergeCV():
-    global n
     x = [control_variate() for i in range(100)]
    # print(x[1:10])
     x2 = [X**2 for X in x]
@@ -195,7 +158,6 @@ def convergeCV():
     return var, mean
 
 def convergeIS():
-    global n
     x = [importance_sampling() for i in range(100)]
    # print(x[1:10])
     x2 = [X**2 for X in x]
@@ -209,28 +171,31 @@ def convergeIS():
 
 def main():
     #Coloque seus testes aqui
+    print('Para n = 2^10:')
     print(f'crude: {crude()}\n')
     print(f'hit or miss: {hit_or_miss()}\n')
     print(f'control variate: {control_variate()}\n')
-#    print(f'importance sampling: {importance_sampling()}\n')
+    print(f'importance sampling: {importance_sampling()}\n')
 
 
 
 
 if __name__ == "__main__":
-    print('Quasi Random')
+    n = 10
+    main()
+
+    print('Quasi Random convergência')
     # ver quando converge para crude
     t0 = time()
     n = 1
     a = convergeCrude()
     while 1:
         a = convergeCrude()
-        if n >= 15366400*a[0]/(a[1]**2):
+        if 2**n >= 15366400*a[0]/(a[1]**2): # condicao do intervalo de confianca
             break
-        n *= 2
+        n += 1
     t1 = time() - t0
-    print(n, a[1], 'Calculado em', t1, 'segundos')
-
+    print(f'n = {2**n}, crude = {a[1]},  Calculado em {t1} segundos')
 
 
     # ver quando converge para hit or miss
@@ -239,12 +204,11 @@ if __name__ == "__main__":
     a = convergeHoM()
     while 1:
         a = convergeHoM()
-        if n >= 15366400*a[0]/(a[1]**2):
+        if 2**n >= 15366400*a[0]/(a[1]**2):
             break
-        n *= 2
+        n += 1
     t1 = time() - t0
-    print(n, a[1], 'Calculado em', t1, 'segundos')
-
+    print(f'n = {2**n}, hom = {a[1]},  Calculado em {t1} segundos')
 
 
     # ver quando converge para control variate
@@ -253,11 +217,11 @@ if __name__ == "__main__":
     a = convergeCV()
     while 1:
         a = convergeCV()
-        if n >= 15366400*a[0]/(a[1]**2):
+        if 2**n >= 15366400*a[0]/(a[1]**2):
             break
-        n*=2
+        n += 1
     t1 = time() - t0
-    print(n, a[1], 'Calculado em', t1, 'segundos')
+    print(f'n = {2**n}, cv = {a[1]},  Calculado em {t1} segundos')
 
 
     # ver quando converge para importance sampling
@@ -265,11 +229,11 @@ if __name__ == "__main__":
     n = 1
     a = convergeIS()
     while 1:
-        a = convergeis()
-        if n >= 15366400*a[0]/(a[1]**2):
+        a = convergeIS()
+        if 2**n >= 15366400*a[0]/(a[1]**2):
             break
-        n*=2
+        n += 1
     t1 = time() - t0
-    print(n, a[1], 'Calculado em', t1, 'segundos')
 
-    #main()              
+    print(f'n = {2**n}, is = {a[1]},  Calculado em {t1} segundos')
+
