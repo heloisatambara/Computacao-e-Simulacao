@@ -8,7 +8,7 @@ INFO = {12556819:"Heloisa Tambara",2371457:"Fabricio Barbosa Bittencourt"}
 import numpy as np
 
 
-
+# trazer f() de volta
 
 def fpotencial(theta, a): 
     lista = [] 
@@ -26,18 +26,17 @@ class Estimador:
     Os metodos definidos abaixo serao utilizadas por um corretor automatico. Portanto,
     precisa manter os outputs e inputs dos 2 metodos abaixo. 
     """
-    def __init__(self,x,y):
+    def __init__(self,x):
         """
         Inicializador do objeto. Este metodo recebe 
         valores pros vetores x e y em formato de lista 
         e implementa no objeto. 
         """
         self.vetor_x = x #formato: [0,0,0] - List cujo len(x) = 3
-        self.vetor_y = y #formato: [0,0,0] - List cujo len(y) = 3
         #Continue o codigo conforme achar necessario.
         a = []
         for i in range(len(x)): 
-          a.append(x[i] + y[i])
+          a.append(x[i])
         self.a = a
 
 
@@ -60,7 +59,7 @@ class Estimador:
 
         sp = p0
 
-        while cont < harmup_n:
+        while cont < harmup_n: # LENTO pra cacete!
             bol = True
             
             while bol:
@@ -87,6 +86,7 @@ class Estimador:
 
         lp = sp
         while cont < n:
+          
             
             bol = True
             while bol:
@@ -157,7 +157,7 @@ class Estimador:
 
 def main(): #ARRUMAR PARA SAIR ISSO DE QUALQUER JEITO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    estimativa = Estimador([1,2,3],[2,4,6])
+    estimativa = Estimador([1,2,3])
     print("Implementando o valor para v")
     print(f"Temos que U({42}) = {estimativa.U(42)}")
 
