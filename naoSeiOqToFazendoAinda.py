@@ -16,17 +16,6 @@ import numpy as np
 from datetime import datetime
 import math 
 
-def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
-    Xvectors = []
-    for x3 in range(2, 19):
-        Xvectors.append([1, 19-x3, x3])
-    for x3 in range(0,11):
-        Xvectors.append([5, 15-x3, x3])
-    for x3 in range(0,8):
-        Xvectors.append([9, 11-x3, x3])
-
-    return Xvectors
-
 
 
 def theta(theta1,theta3):
@@ -211,12 +200,28 @@ print(string)
 
 
 
+
+# A partir daqui, de minha autoria
+def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
+    Xvectors = []
+    for x3 in range(2, 19):
+        Xvectors.append([1, 19-x3, x3])
+    for x3 in range(0,11):
+        Xvectors.append([5, 15-x3, x3])
+    for x3 in range(0,8):
+        Xvectors.append([9, 11-x3, x3])
+
+    return Xvectors
+
+
+
 n_cadeia_fria = 10000
 n = 3900000
 saltos = 10
 mean = [0,0]
 sigma = 0.02
 cov = np.array([[sigma,0],[0,sigma]])
+
 
 Xvectors = listOfXvectors() # deve ter tamanho 36 x 3
 Y = 1
