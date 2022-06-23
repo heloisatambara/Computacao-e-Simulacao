@@ -1,211 +1,246 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Resumo: Implementacao do algoritmo de Metropolis-Hastings
 
-#### EP06 ####
-#Escreva seus nomes e numeros USP
-INFO = {12556819:"Heloisa Tambara",2371457:"Fabricio Barbosa Bittencourt"}
+Autor: Eduardo Janotti Cavalcante         
+         
+Data: 20 de Maio de 2020
+Ultima edicao: 15 de Julho de 2021
+
+"""
+
 
 import numpy as np
-import math
+#import matplotlib.pyplot as plt
+from datetime import datetime
+import math 
+
+def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
+    Xvectors = []
+    for x3 in range(2, 19):
+        Xvectors.append([1, 19-x3, x3])
+    for x3 in range(0,11):
+        Xvectors.append([5, 15-x3, x3])
+    for x3 in range(0,8):
+        Xvectors.append([9, 11-x3, x3])
+
+    return Xvectors
 
 
-def fpotencial(theta, a): 
-    lista = [] 
-    for i in range(len(theta)): 
-        lista.append(theta[i]**(a[i]-1)) 
-    n = np.array(lista)
-    
-    
-    return np.prod(n)
 
-def f(theta, a): 
-    lista = [] 
-    for i in range(len(theta)): 
-        lista.append(theta[i]**(a[i]-1)) 
-    n = np.array(lista)
-    
-    beta = math.factorial(a[0]-1)*math.factorial(a[1]-1)*math.factorial(a[2]-1)/math.factorial(sum(a)-1)
-    return np.prod(n)/beta
+def theta(theta1,theta3):
+    # funcao potencial
+    theta2 = 1 - theta1 - theta3
+    if theta1 <0 or theta2<0 or theta3<0:
+        return 0
+    y = ((theta1**(x1-1))*(theta2**(x2-1))*(theta3**(x3-1)))
+    return y
     
 
+def alpha(i,j):
+    # alpha de aceitacao utilizado
+    if theta(i[0],i[1]) == 0: return 1
+    return theta(j[0],j[1])/theta(i[0],i[1])
 
-def amostra_MCMC(x,n):
-    """
-    Funcao que recebe valores pros vetores x e y, o tamanho n da amostra, 
-    gera uma amostra de tamanho n a partir do metodo de monte carlo via 
-    cadeias de markov, onde cada elemento da amostra tem tamanho 3 (vetor),
-    e retorna uma lista de tamanho n com os potenciais de cada ponto obtido,
-    onde cada elemento tem tamanho 1 (escalar).
+
     
-    Nao utilize a fuancao densidade de probabilidade, apenas a funcao potencial!
-    """
-    a = []
+###############################################################################
     
-    for i in range(len(x)):
-        a.append(x[i]) # a é parâmetro para a distribuição de dirichlet
+    
+def MCMC(aquecimento,tamanho_da_cadeia,saltos,mean,cov,ponto_inicial):
+    #gera uma cadeia a partir do n do aquecimento, n do tamanho da cadeia e
+    # tamanho dos saltos, matriz de covariancia e ponto inicial
+    # funciona apenas para dimensao dois
+    
+    
+    # total de pontos a serem gerados
+    n = aquecimento+(tamanho_da_cadeia*saltos)
+    
+    
+    # gera os valores da normal e uniforme anteriormente por vetorizacao
+    normal = np.random.multivariate_normal(mean,cov,n)
+    uniforme = np.random.uniform(0,1,n)
+    
+    #contagem dos pontos gerados para pegar o k-esimo candidato
+    k = 0
+    
+    
+    #cria a base da cadeia, apenas para facilitar o codigo
+    cadeia = [0]*(tamanho_da_cadeia*saltos)
+
+    
+    
+    
+                        #### Aquecimento ####   
+    # funcionamento igual ao topico MCMC, sem salvar a cadeia
+    # Salvando apenas o ultimo membro
+    cadeia_fria = ponto_inicial 
+    for i in range(aquecimento):   
+        atual = cadeia_fria
+        proximo = (0,0)
+        caminho = normal[k]
+        proximo = (atual[0] + caminho[0] , atual[1] + caminho[1])
+        if uniforme[k] < alpha(atual , proximo):
+            cadeia_fria = proximo
+        k += 1
         
-    a0 = sum(a)
-    #print("ao=",a0 )
-
-    matrix = np.array([[1.0,1.0,1.0],[1.0,1.0,1.0],[1.0,1.0,1.0]])
-
-    for i in range(len(a)):
-        for j in range(len(a)):
-            if i==j:
-                matrix[i][j] = (a[i]*(a0 - a[i]))/(a0**2*(a0+1))   #Var
-                
-            else:
-                matrix[i][j] = (-a[i]*a[j])/((a0**2)*(a0+1))    #Cov
-    print('Breakpoint 1')
-    
-
-    harmup_n = 10000
-    cont = 0
-    p0 = np.array([0.3,0.3,0.4])
-
-    sp = p0
-    #vez=1
-    while cont < harmup_n:
-        bol = True
         
-        while bol:
-            ponto = np.random.multivariate_normal(sp,matrix)
-            #if vez<=5: print (ponto)
-            #vez+=1
-            if ponto[0] >= 0 and ponto[1] >= 0 and ponto[2]>=0:    
-                bol = False
-                
-        alpha = min(1, fpotencial(ponto,a)/fpotencial(sp,a))        #g(xj)=fpotencial(ponto,a)     g(xi)=fpotencial(sp,a)
-        #print(alpha, ponto,a, sp, fpotencial(ponto,a),fpotencial(sp,a))
-        if alpha >= np.random.uniform():
+        
+    # calculo da taxa de aceitacao
+    taxa_num = 0
+    
             
-            sp = ponto
-        #print(sp)
-        cont+=1
-    print('Breakpoint 2')
-
-
-
-    n = 3900000
-
-    lista = []
-    cont = 0
-
-    lp = sp
-    while cont < n: #Aqui demora pra bosta
-        
-        bol = True
-        while bol:
-            ponto = np.random.multivariate_normal(lp,matrix)
-            if ponto[0] >= 0 and ponto[1] >= 0 and ponto[2]>=0:
-                
-                bol = False
-
-
-        alpha = min(1, fpotencial(ponto,a)/fpotencial(lp,a))
-        if alpha >= np.random.uniform():
-    
-            lista.append(ponto)
-            lp = ponto
             
-        else: 
-            lista.append(lp)
-        
-        cont+=1
-
-    print('Breakpoint 3')
-
-    amostra_de_potenciais = lista # ["Nenhuma amostra foi gerada"]
-    return amostra_de_potenciais # Exemplo do formato = [0.04867, 0.00236, 0.00014 ... ]
-
-
-
-
-
-
-
-
-class Estimador:
-    """
-    Classe para criar o objeto, ele recebe valores para os vetores x e y.
-    Os metodos definidos abaixo serao utilizadas por um corretor automatico. Portanto,
-    precisa manter os outputs e inputs dos 2 metodos abaixo. 
-    """
-    def __init__(self,x):
-        """
-        Inicializador do objeto. Este metodo recebe 
-        valores pros vetores x e y em formato de lista 
-        e implementa no objeto. 
-        """
-        self.vetor_x = x #formato: [0,0,0] - List cujo len(x) = 3
-        #self.vetor_y = y #formato: [0,0,0] - List cujo len(y) = 3
-        #Continue o codigo conforme achar necessario.
-        a = []
-        for i in range(len(x)): 
-          a.append(x[i])
-        self.a = a
-
-
-        lista = amostra_MCMC(x,100)
-        self.lista = lista
-
-        n = 3900000
-        fv = []
-        ftheta = np.array(self.lista)
-
-        for i in range(n):
-            fv.append(f(ftheta[i], self.a))
-
-        fv = sorted(fv)
-    
-        self.k = k = 15000 #A escolha do valor k está explicada no relatório.
-        V = [0]
-    
-        for i in range(k):
-            V.append(fv[n//k*i])
-        V.append(fv[-1])
-        
-        self.V = V
-
-
-
-    def U(self,v):
-        """
-        Este metodo recebe um valor para v e, a partir dele, retorna U(v|x,y) a partir dos 
-        vetores x e y inicializados anteriormente
-        """
-        # Continue o codigo conforme achar necessario
-        if v < self.V[1]: u = 0
-        elif v > self.V[self.k+1]: u = 1
+                        #### MCMC ####   
+        #######################################################################
+    cadeia[0] = cadeia_fria        #A cadeia esquentada recebe o ultimo 
+                                     #termo da fria
+        #######################################################################
+    for i in range((tamanho_da_cadeia*saltos)-1):     
+        atual = cadeia[i]    # Posicao atual da cadeia
+        #######################################################################
+        # Calculo do proximo candidato
+        proximo = (0,0)   
+        caminho = normal[k]
+        proximo = (atual[0] + caminho[0] , atual[1] + caminho[1])
+        #######################################################################
+                                                   # Decide se a nova posicao é
+        if uniforme[k] < alpha(atual , proximo):    # aceita, movendo a 
+            cadeia[i+1] = proximo                            # cadeia caso seja 
+            
+            taxa_num += 1 #calcula a taxa de aceitacao
+            
         else:
-            acharbin = 1
-            a = 1
-            while acharbin == 1:
-                if v < self.V[a]: acharbin = 0
-                a += 1
-            u = 1/self.k*(v-self.V[a])/(self.V[a+1]-self.V[a])+(a-1)/self.k
+            #repete o ultimo termo caso n seja aceito
+            cadeia[i+1] = atual
+            
+        k += 1
+        #######################################################################  
+        
+    #taxa de aceitacao
+    taxa = taxa_num/len(cadeia)
+        
+    
+    
+    if saltos ==1:
+        return cadeia,taxa
+    
+    # elimina parte da amostra para diminuir a correlacao
+    cadeia_final = [0]*tamanho_da_cadeia
+    for i in range(tamanho_da_cadeia):
+        cadeia_final[i] = cadeia[saltos*i]
+    return cadeia_final,taxa
 
-
-        return u
-
-
-
-def main():
-    #Coloque seus testes aqui
-    print("Segue um exemplo de funcionamento:")
-    print("Criando o objeto")
-    estimativa = Estimador([1,2,3])
-    print("Implementando o valor para v")
-    print(f"Temos que U({42}) = {estimativa.U(42)}")
-    print(f"Para um novo valor de v, temos que U({5/4}) = {estimativa.U(5/4)}")
-    print()
-    print(f"Os valores dos vetores utilizados sao: {estimativa.vetor_x,estimativa.vetor_y}")
-    print("Este exemmplo foi feito para demonstrar o funcionamento esperado do objeto")
-
-#    print(f"x1={x1}, x3={x3}, Y= {Y}, H={decisao},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+    
 
 
 
-if __name__ == "__main__":
-    main()
+
+###############################################################################
+###############################################################################
+###############################################################################
+
+
+def u(c,v):
+    # calculo de u a partir da cadeia e de um vetor v de cortes, retorna vetor
+    soma = [0]*len(v)
+    for j in range(len(v)):
+        # aqui q entra a ctt de integracao
+        k = v[j]/(math.gamma(x1+x2+x3)/(math.gamma(x1)*math.gamma(x2)*math.gamma(x3)))
+        for i in c:
+            if theta(i[0],i[1]) > k:
+                soma[j] += 1
+    somas = np.array(soma)
+    return 1 - (somas/len(c) )
+    
+###############################################################################
+###############################################################################
+###############################################################################
+#Definicao dos parametros  
+#altere esses valores para testar o codigo
+num = 3900000  #numero de pontos
+x = [1,2,3]  #vetor x
+y = [4,6,4]  #vetor y
+v = [0,1,0.5,7,15]  # valores a serem calculados
+
+
+# media da dist normal utilizada
+mean = [0,0]
+# definificao da matriz de covariancia utilizada
+# dimensao 2 pois o terceiro valor eh um menos os outros dois
+sigma = 0.02
+cov = np.array([[sigma,0],[0,sigma]])
+#Ponto inicial da cadeia
+ponto_inicial = (0,0)
+saltos = 10
+n_cadeia_fria = 10000
+###############################################################################
+
+x1,x2,x3 =  [x[0]+y[0],x[1]+y[1],x[2]+y[2]]  # vetor x+y
+
+#calcula o tempo
+now1 = datetime.now()
+
+#gera a cadeia
+c,taxa = MCMC(n_cadeia_fria,num,saltos,mean,cov,ponto_inicial)   #           
+
+#calcula os u(v)
+lista = u(c,v)
+    
+string = ""
+for i in range(len(v)):
+    string += f"U({v[i]}) = {lista[i]}\n"
+print("As estimativas foram: ")
+print(string)
+
+print(f"A taxa de aceitacao foi de {taxa}%")
+now2 = datetime.now()
+print(f"Programa demorou {now2-now1} para rodar.\n")
+print(f"Foram gerados {n_cadeia_fria+(num*saltos)} pontos sendo",
+      f"{n_cadeia_fria} o tamanho da cadeia fria e {num*saltos} a",
+      f"quantia gerada para se ter uma cadeia de tamanho {num} com",
+      f"{saltos} saltos.\n")
+print(f"A cadeia se iniciou no ponto {ponto_inicial} e variou a partir",
+      "de uma normal multivariada com a seguinte distribuicao:")
+
+string = f"  / |{mean[0]}| |{str(cov[0])[1:-1]}| \\\n"
+string+= f"N \ |{mean[1]}|,|{str(cov[1])[1:-1]}| /"
+print(string)
+
+
+
+
+n_cadeia_fria = 10000
+n = 3900000
+saltos = 10
+mean = [0,0]
+sigma = 0.02
+cov = np.array([[sigma,0],[0,sigma]])
+
+Xvectors = listOfXvectors() # deve ter tamanho 36 x 3
+Y = 1
+ponto_inicial = (1,1)
+for i in range(36):
+    
+    vetor, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
+    ev = u(vetor,Theta)
+    x1, x3 = Xvectors[i][0], Xvectors[i][2]
+    if ev <= .05: H = "Rejeita H0"
+    else: H = "Aceita H0"
+    # falta vetor_theta e sev
+    print(f"x1={x1}, x3={x3}, Y= {Y}, H={decisao},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+
+Y = 0
+ponto_inicial = (1,1)
+for i in range(36):
+    
+    ev, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
+    x1, x3 = Xvectors[i][0], Xvectors[i][2]
+    if ev <= .05: H = "Rejeita H0"
+    else: H = "Aceita H0"
+    # falta vetor_theta e sev
+    print(f"x1={x1}, x3={x3}, Y= {Y}, H={decisao},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+
+
 
