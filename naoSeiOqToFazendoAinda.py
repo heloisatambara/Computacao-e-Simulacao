@@ -14,7 +14,19 @@ Ultima edicao: 15 de Julho de 2021
 import numpy as np
 #import matplotlib.pyplot as plt
 from datetime import datetime
+from scipy import stats
 import math 
+
+def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
+    Xvectors = []
+    for x3 in range(2, 19):
+        Xvectors.append([1, 19-x3, x3])
+    for x3 in range(0,11):
+        Xvectors.append([5, 15-x3, x3])
+    for x3 in range(0,8):
+        Xvectors.append([9, 11-x3, x3])
+
+    return Xvectors
 
 
 
@@ -200,21 +212,6 @@ print(string)
 
 
 
-
-# A partir daqui, de minha autoria
-def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
-    Xvectors = []
-    for x3 in range(2, 19):
-        Xvectors.append([1, 19-x3, x3])
-    for x3 in range(0,11):
-        Xvectors.append([5, 15-x3, x3])
-    for x3 in range(0,8):
-        Xvectors.append([9, 11-x3, x3])
-
-    return Xvectors
-
-
-
 n_cadeia_fria = 10000
 n = 3900000
 saltos = 10
@@ -222,30 +219,48 @@ mean = [0,0]
 sigma = 0.02
 cov = np.array([[sigma,0],[0,sigma]])
 
-
 Xvectors = listOfXvectors() # deve ter tamanho 36 x 3
-Y = 1
+Y = [1,1,1]
 ponto_inicial = (1,1)
 for i in range(36):
     
     vetor, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
     ev = u(vetor,Theta)
     x1, x3 = Xvectors[i][0], Xvectors[i][2]
-    if ev <= .05: H = "Rejeita H0"
+    if sev <= .05: H = "Rejeita H0"
     else: H = "Aceita H0"
     # falta vetor_theta e sev
-    print(f"x1={x1}, x3={x3}, Y= {Y}, H={decisao},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+    print(f"x1={x1}, x3={x3}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
 
-Y = 0
+Y = [0,0,0]
 ponto_inicial = (1,1)
 for i in range(36):
     
     ev, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
     x1, x3 = Xvectors[i][0], Xvectors[i][2]
-    if ev <= .05: H = "Rejeita H0"
+    if sev <= .05: H = "Rejeita H0"
     else: H = "Aceita H0"
     # falta vetor_theta e sev
-    print(f"x1={x1}, x3={x3}, Y= {Y}, H={decisao},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+    print(f"x1={x1}, x3={x3}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
 
 
+
+# restrição x3 = (1- x1**(1/2))**2
+
+## Cálculo do sev
+def sev(x):
+    y = 1- QQ(t,h,1-ev(x))
+    return y
+
+t = 3 #dim(theta)
+h = 2 #dim(H)
+
+def QQ(t,h,z):
+    fz = stats.chi2.cdf(t*h, stats.chi2.ppf(t,z))
+    return fz
+
+    
+def ev(c, maxs):  
+    y = u(c, maxs)
+    return y
 
