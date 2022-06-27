@@ -223,10 +223,18 @@ print(string)
 
 
 # maximizar U:
+# maximizar U:
 def fdps(theta, x):
-    for i in theta:
-        y = (theta[0]**x[0]*theta[1]**x[1]*theta[2]**x[2])
-    return -y
+    y = []
+    for theta in theta:
+ #       if theta[2] == (1-theta[0]**(1/2))**2
+        y.append((float(theta[0])**x[0]*float(theta[1])**x[1]))
+    return y
+print(max(fdps(c,x)))
+
+print(minimize_scalar(fdps(c, x)))
+
+
 
 
 print(minimize_scalar(fdps(c, x)))
