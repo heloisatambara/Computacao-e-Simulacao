@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 # -*- coding: utf-8 -*-
 """
 Resumo: Implementacao do algoritmo de Metropolis-Hastings
@@ -9,12 +9,13 @@ Data: 20 de Maio de 2020
 Ultima edicao: 15 de Julho de 2021
 
 """
-
+from scipy.stats import chi2
+from scipy.optimize import minimize_scalar
 
 import numpy as np
 #import matplotlib.pyplot as plt
 from datetime import datetime
-from scipy import stats
+
 import math 
 
 def listOfXvectors(): # cria a lista dos vetores x a serem testados, exemplificados no artigo
@@ -131,7 +132,7 @@ def MCMC(aquecimento,tamanho_da_cadeia,saltos,mean,cov,ponto_inicial):
     cadeia_final = [0]*tamanho_da_cadeia
     for i in range(tamanho_da_cadeia):
         cadeia_final[i] = cadeia[saltos*i]
-    return cadeia_final,taxa
+    return cadeia_final,taxa # a cadeia final é s?
 
     
 
@@ -160,7 +161,7 @@ def u(c,v):
 ###############################################################################
 #Definicao dos parametros  
 #altere esses valores para testar o codigo
-num = 3900000  #numero de pontos
+num = 100000  #numero de pontos
 x = [1,2,3]  #vetor x
 y = [4,6,4]  #vetor y
 v = [0,1,0.5,7,15]  # valores a serem calculados
@@ -212,55 +213,89 @@ print(string)
 
 
 
-n_cadeia_fria = 10000
-n = 3900000
-saltos = 10
-mean = [0,0]
-sigma = 0.02
-cov = np.array([[sigma,0],[0,sigma]])
 
-Xvectors = listOfXvectors() # deve ter tamanho 36 x 3
-Y = [1,1,1]
-ponto_inicial = (1,1)
-for i in range(36):
+
+
+#############################################################################################################################
+#############################################################################################################################
+#############################################################################################################################
+
+
+
+# maximizar U:
+def fdps(theta, x):
+    for i in theta:
+        y = (theta[0]**x[0]*theta[1]**x[1]*theta[2]**x[2])
+    return -y
+
+
+print(minimize_scalar(fdps(c, x)))
+
+
+
+
+
+
+def main():
+    n_cadeia_fria = 10000
+    n = 100000
+    saltos = 10
+    mean = [0,0]
+    sigma = 0.02
+    cov = np.array([[sigma,0],[0,sigma]])
+    v = [0.3] # achar v q maximiza u
+    t = 3
+    h = 2
+    Xvectors = listOfXvectors() # deve ter tamanho 36 x 3
     
-    vetor, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
-    ev = u(vetor,Theta)
-    x1, x3 = Xvectors[i][0], Xvectors[i][2]
-    if sev <= .05: H = "Rejeita H0"
-    else: H = "Aceita H0"
-    # falta vetor_theta e sev
-    print(f"x1={x1}, x3={x3}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+    ponto_inicial = (0,0)
 
-Y = [0,0,0]
-ponto_inicial = (1,1)
-for i in range(36):
-    
-    ev, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
-    x1, x3 = Xvectors[i][0], Xvectors[i][2]
-    if sev <= .05: H = "Rejeita H0"
-    else: H = "Aceita H0"
-    # falta vetor_theta e sev
-    print(f"x1={x1}, x3={x3}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={sev}")
+
+    Y = [1,1,1]
+    for i in range(36):
+        vetor, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
+   #     ev = u(vetor,Theta)
+        x1, x2, x3 = Xvectors[i][0]+1, Xvectors[i][1]+1, Xvectors[i][2]+1
+        ev = u(vetor, v)
+        vetor_theta = 0
+        Sev = sev(t,h,ev)
+        print(Sev)
+        if Sev <= .05: H = "Rejeita H0"
+        else: H = "Aceita H0"
+        # falta vetor_theta e sev
+        print(f"x1={x1-1}, x3={x3-1}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={Sev}")
 
 
 
-# restrição x3 = (1- x1**(1/2))**2
+    Y = [0,0,0]
+    for i in range(36):
+        
+        vetor, taxa = MCMC(n_cadeia_fria,n,saltos,mean,cov,ponto_inicial) 
+        x1, x2, x3 = Xvectors[i][0], Xvectors[i][1], Xvectors[i][2]
+        ev = u(vetor, v)
+        vetor_theta = 0
+        Sev = sev(t,h,ev)
+        if Sev <= .05: H = "Rejeita H0"
+        else: H = "Aceita H0"
+        # falta vetor_theta e sev
+        print(f"x1={x1-1}, x3={x3-1}, Y= {Y}, H={H},  θ*= {vetor_theta}, ev(H|X)={ev} e sev(H|X)={Sev}")
+
+
+
+# restrição theta3 = (1- theta1**(1/2))**2
 
 ## Cálculo do sev
-def sev(x):
-    y = 1- QQ(t,h,1-ev(x))
+def sev(t,h,ev):
+    y = 1- QQ(t,h,1-ev)
     return y
 
 t = 3 #dim(theta)
 h = 2 #dim(H)
 
 def QQ(t,h,z):
-    fz = stats.chi2.cdf(t*h, stats.chi2.ppf(t,z))
+    fz = chi2.cdf( chi2.ppf(z,t), t*h)
     return fz
 
-    
-def ev(c, maxs):  
-    y = u(c, maxs)
-    return y
 
+
+main()
